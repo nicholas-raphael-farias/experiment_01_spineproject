@@ -38,6 +38,17 @@ lerna-debug.log*
 # SQLite
 *.sqlite
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log
+
 # dotenv environment variable files
 .env
 .env.development.local
