@@ -1,0 +1,40 @@
+name: Build Zip Artifact
+description: Build the NestJS app and create a production zip artifact
+
+inputs:
+  artifact-name:
+    description: Name for the output zip file
+    required: true
+
+outputs:
+  zip-path:
+    description: Path to the created zip file
+    value: ${{ steps.zip.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - run: pnpm run build
+      shell: bash
+
+    - run: pnpm install --frozen-lockfile --prod
+      shell: bash
+
+    - id: zip
+      run: |
+        ZIP_NAME="${{ inputs.artifact-name }}"
+        zip -r "$ZIP_NAME" dist/ node_modules/ package.json
+        echo "path=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+      shell: bash

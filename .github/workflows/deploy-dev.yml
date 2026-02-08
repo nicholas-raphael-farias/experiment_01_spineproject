@@ -1,0 +1,42 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [development]
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-zip
+        with:
+          artifact-name: app-dev-${{ github.sha }}.zip
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp "app-dev-${{ github.sha }}.zip" \
+            "s3://${{ vars.ARTIFACTS_BUCKET }}/dev/${{ github.sha }}.zip"
+
+          aws s3 cp \
+            "s3://${{ vars.ARTIFACTS_BUCKET }}/dev/${{ github.sha }}.zip" \
+            "s3://${{ vars.ARTIFACTS_BUCKET }}/dev/latest.zip"
