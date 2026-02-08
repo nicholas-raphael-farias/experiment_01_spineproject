@@ -1,0 +1,47 @@
+name: Release Prod
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-zip
+        with:
+          artifact-name: app-prod-${{ github.ref_name }}.zip
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp "app-prod-${{ github.ref_name }}.zip" \
+            "s3://${{ vars.ARTIFACTS_BUCKET }}/prod/${{ github.ref_name }}.zip"
+
+          aws s3 cp \
+            "s3://${{ vars.ARTIFACTS_BUCKET }}/prod/${{ github.ref_name }}.zip" \
+            "s3://${{ vars.ARTIFACTS_BUCKET }}/prod/latest.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "app-prod-${{ github.ref_name }}.zip" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
